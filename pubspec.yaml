@@ -1,0 +1,28 @@
+name: hostel_hub
+description: A modern hostel management app for college students.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.1
+  cupertino_icons: ^1.0.6
+  pinput: ^5.0.0
+  supabase_flutter: ^2.12.4
+  http: ^1.6.0
+  flutter_dotenv: ^6.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/
