@@ -7,6 +7,7 @@ import '../../utils/app_theme.dart';
 import '../../providers/app_provider.dart';
 import '../../models/user_model.dart';
 import '../../widgets/common_widgets.dart';
+import '../auth/role_selection_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -30,7 +31,7 @@ class ProfileScreen extends StatelessWidget {
             expandedHeight: 220,
             pinned: true,
             automaticallyImplyLeading: false,
-            backgroundColor: AppTheme.primary,
+            backgroundColor: AppTheme.primaryOrange,
             flexibleSpace: FlexibleSpaceBar(
               background: _buildProfileHero(context, user),
             ),
@@ -119,7 +120,7 @@ class ProfileScreen extends StatelessWidget {
                       trailing: Switch.adaptive(
                         value: true,
                         onChanged: (_) {},
-                        activeColor: AppTheme.primary,
+                        activeColor: AppTheme.primaryOrange,
                       ),
                     ),
                     const Divider(height: 0),
@@ -367,7 +368,7 @@ class ProfileScreen extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.cardBorder),
       ),
@@ -378,7 +379,7 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
             child: Row(
               children: [
-                Icon(icon, size: 16, color: AppTheme.primary),
+                Icon(icon, size: 16, color: AppTheme.primaryOrange),
                 const SizedBox(width: 8),
                 Text(
                   title,
@@ -406,7 +407,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildDocumentsSection(UserModel user) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.cardBorder),
       ),
@@ -418,7 +419,7 @@ class ProfileScreen extends StatelessWidget {
             child: Row(
               children: [
                 Icon(Icons.folder_rounded,
-                    size: 16, color: AppTheme.primary),
+                    size: 16, color: AppTheme.primaryOrange),
                 SizedBox(width: 8),
                 Text(
                   'Documents',
@@ -463,24 +464,30 @@ class ProfileScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.cardBlack,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: const Text('Logout?'),
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppTheme.cardBorder)),
+        title: const Text('Logout?', style: TextStyle(color: AppTheme.textWhite)),
         content: const Text(
-            'Are you sure you want to logout from Hostel Hub?'),
+            'Are you sure you want to logout from Hostel Hub?', style: TextStyle(color: AppTheme.textGrey)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textGrey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.error),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(context); // Close dialog
               context.read<AppProvider>().logout();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                (_) => false,
+              );
             },
-            child: const Text('Logout'),
+            child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -490,7 +497,7 @@ class ProfileScreen extends StatelessWidget {
   void _showHelp(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

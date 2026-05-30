@@ -29,7 +29,7 @@ class SquidexService {
         'client_secret': _clientSecret,
         'scope': 'squidex-api',
       },
-    );
+    ).timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -46,7 +46,7 @@ class SquidexService {
     final response = await http.get(
       url,
       headers: {'Authorization': 'Bearer $_accessToken'},
-    );
+    ).timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -77,7 +77,7 @@ class SquidexService {
     final response = await http.get(
       url,
       headers: {'Authorization': 'Bearer $_accessToken'},
-    );
+    ).timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -101,7 +101,7 @@ class SquidexService {
     final response = await http.get(
       url,
       headers: {'Authorization': 'Bearer $_accessToken'},
-    );
+    ).timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);

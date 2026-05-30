@@ -28,7 +28,7 @@ class HomeScreen extends StatelessWidget {
           SliverAppBar(
             pinned: true,
             expandedHeight: 160,
-            backgroundColor: Colors.white,
+            backgroundColor: AppTheme.bg,
             surfaceTintColor: Colors.transparent,
             flexibleSpace: FlexibleSpaceBar(
               background: _buildHeader(context, user, cartCount),
@@ -83,7 +83,7 @@ class HomeScreen extends StatelessWidget {
   // ── Top header ────────────────────────────
   Widget _buildHeader(BuildContext context, user, int cartCount) {
     return Container(
-      color: Colors.white,
+      color: AppTheme.bg,
       padding: const EdgeInsets.fromLTRB(20, 50, 20, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +342,7 @@ class HomeScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.surfaceDark,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppTheme.cardBorder),
               ),
@@ -441,7 +441,7 @@ class _StatTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceDark,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppTheme.cardBorder),
         ),
@@ -503,7 +503,7 @@ class _ServiceCard extends StatelessWidget {
       onTap: data.onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: data.bgColor,
+          color: AppTheme.surfaceDark,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: data.color.withOpacity(0.15),

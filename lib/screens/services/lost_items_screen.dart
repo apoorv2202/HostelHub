@@ -2,6 +2,7 @@
 //  LostItemsScreen — Report lost items & pay
 // ─────────────────────────────────────────────
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 
@@ -69,21 +70,46 @@ class _LostItemsScreenState extends State<LostItemsScreen> {
 
   Future<void> _pay() async {
     setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      setState(() {
-        _isProcessing = false;
-        _paymentDone = true;
-      });
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      
+      if (userId != null) {
+        final itemType = _selectedItem == 'Mess Card' ? 'mess_card' : 'id_card';
+        
+        await supabase.from('lost_requests').insert({
+          'user_id': userId,
+          'item_type': itemType,
+          'payment_status': 'paid',
+          'status': 'pending',
+        });
+      }
+      
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _paymentDone = true;
+        });
+      }
+    } catch (e) {
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit request: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
         title: const Text('Lost Items 🔑'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.bg,
       ),
       body: _paymentDone
           ? _buildSuccessView()
@@ -197,7 +223,7 @@ class _LostItemsScreenState extends State<LostItemsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.cardBorder),
       ),
@@ -236,7 +262,7 @@ class _LostItemsScreenState extends State<LostItemsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: item.bgColor,
+        color: item.color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: item.color.withOpacity(0.2)),
       ),
@@ -300,7 +326,7 @@ class _LostItemsScreenState extends State<LostItemsScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.cardBorder),
       ),
@@ -414,7 +440,7 @@ class _LostItemCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? data.bgColor : Colors.white,
+          color: isSelected ? data.color.withOpacity(0.12) : AppTheme.surfaceDark,
           border: Border.all(
             color: isSelected ? data.color : AppTheme.cardBorder,
             width: isSelected ? 2 : 1,
@@ -427,7 +453,7 @@ class _LostItemCard extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: data.bgColor,
+                color: data.color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(

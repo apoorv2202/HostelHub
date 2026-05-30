@@ -7,6 +7,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../models/models.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/app_provider.dart';
 import '../../widgets/common_widgets.dart';
 import '../../services/squidex_service.dart';
 import 'cart_screen.dart';
@@ -27,28 +28,14 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
     'All', 'Snacks', 'Sandwich', 'Burger', 'Rolls', 'Egg', 'Beverages'
   ];
 
-  bool _isLoading = true;
-  List<FoodItem> _foodItems = [];
-
   @override
   void initState() {
     super.initState();
     _tabController =
         TabController(length: _categories.length, vsync: this);
-    _fetchFoodItems();
-  }
-
-  Future<void> _fetchFoodItems() async {
-    try {
-      final items = await SquidexService().getFoodItems();
-      setState(() {
-        _foodItems = items;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      print('Error fetching food items: \$e');
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppProvider>().fetchFoodItems();
+    });
   }
 
   @override
@@ -57,8 +44,8 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
     super.dispose();
   }
 
-  List<FoodItem> _filteredItems(String category) {
-    return _foodItems.where((item) {
+  List<FoodItem> _filteredItems(List<FoodItem> items, String category) {
+    return items.where((item) {
       final matchesCategory =
           category == 'All' || item.category == category;
       final matchesSearch = item.name
@@ -70,13 +57,15 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
     final cart = context.watch<CartProvider>();
+    final foodItems = provider.foodItems;
 
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
         title: const Text('Night Canteen 🍜'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.bg,
         actions: [
           Stack(
             clipBehavior: Clip.none,
@@ -139,11 +128,11 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
                 controller: _tabController,
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
-                labelColor: AppTheme.primary,
+                labelColor: AppTheme.primaryOrange,
                 unselectedLabelColor: AppTheme.textMedium,
                 labelStyle: const TextStyle(
                     fontWeight: FontWeight.w600, fontSize: 13),
-                indicatorColor: AppTheme.primary,
+                indicatorColor: AppTheme.primaryOrange,
                 indicatorWeight: 2.5,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 tabs:
@@ -153,7 +142,7 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
           ),
         ),
       ),
-      body: _isLoading ? const Center(child: CircularProgressIndicator()) : Column(
+      body: provider.isLoading && foodItems.isEmpty ? const Center(child: CircularProgressIndicator()) : Column(
         children: [
           // ── Canteen timing banner ─────────────────
           Container(
@@ -187,7 +176,7 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
             child: TabBarView(
               controller: _tabController,
               children: _categories.map((cat) {
-                final items = _filteredItems(cat);
+                final items = _filteredItems(foodItems, cat);
                 if (items.isEmpty) {
                   return const EmptyState(
                     emoji: '🍽️',
@@ -210,7 +199,7 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
       // ── Floating cart bar ─────────────────────
       bottomNavigationBar: cart.itemCount > 0
           ? Container(
-              color: Colors.white,
+              color: AppTheme.surfaceDark,
               padding: EdgeInsets.fromLTRB(
                   16, 12, 16,
                   MediaQuery.of(context).padding.bottom + 12),
@@ -223,7 +212,7 @@ class _NightCanteenScreenState extends State<NightCanteenScreen>
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary,
+                    color: AppTheme.primaryOrange,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -291,11 +280,11 @@ class _FoodItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: inCart
-              ? AppTheme.primary.withOpacity(0.3)
+              ? AppTheme.primaryOrange.withOpacity(0.3)
               : AppTheme.cardBorder,
         ),
       ),
@@ -388,20 +377,20 @@ class _FoodItemCard extends StatelessWidget {
                             context.read<CartProvider>().removeItem(item),
                       )
                     else
-                      GestureDetector(
+                       GestureDetector(
                         onTap: () =>
                             context.read<CartProvider>().addItem(item),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
-                            border: Border.all(color: AppTheme.primary),
+                            border: Border.all(color: AppTheme.primaryOrange),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
                             'ADD',
                             style: TextStyle(
-                              color: AppTheme.primary,
+                              color: AppTheme.primaryOrange,
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                               letterSpacing: 0.5,

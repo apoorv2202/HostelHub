@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 //  MyOrdersScreen — Past and current orders
 // ─────────────────────────────────────────────
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../utils/app_theme.dart';
@@ -20,15 +21,23 @@ class MyOrdersScreen extends StatefulWidget {
 class _MyOrdersScreenState extends State<MyOrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
+    // Auto-refresh every 15 seconds so status changes by canteen staff reflect here
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        context.read<AppProvider>().refreshOrders();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _tabCtrl.dispose();
     super.dispose();
   }
@@ -53,7 +62,13 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
       appBar: AppBar(
         title: const Text('My Orders'),
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            onPressed: () => context.read<AppProvider>().refreshOrders(),
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMedium),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabCtrl,
           labelColor: AppTheme.primary,
@@ -131,7 +146,7 @@ class _OrderCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isActive
@@ -443,22 +458,23 @@ class _OrderCard extends StatelessWidget {
       case OrderStatus.placed:
         return const StatusChip(
           label: 'Placed',
-          bgColor: Color(0xFFFFFBEB),
-          textColor: AppTheme.warning,
+          bgColor: Color(0x26FFB020),
+          textColor: Color(0xFFFFB020),
           icon: Icons.receipt_rounded,
         );
       case OrderStatus.preparing:
         return const StatusChip(
           label: 'Preparing 🔥',
-          bgColor: Color(0xFFFFF7ED),
-          textColor: Color(0xFFEA580C),
+          bgColor: Color(0x26FF6B35),
+          textColor: Color(0xFFFF6B35),
           icon: Icons.local_fire_department_rounded,
         );
       case OrderStatus.outForDelivery:
         return const StatusChip(
           label: 'On the way 🛵',
-          bgColor: Color(0xFFEFF6FF),
+          bgColor: Color(0x263B82F6),
           textColor: Color(0xFF3B82F6),
+          icon: Icons.delivery_dining_rounded,
         );
       case OrderStatus.delivered:
         return StatusChip.completed();

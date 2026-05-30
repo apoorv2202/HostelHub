@@ -31,6 +31,29 @@
 
   <title>hostel_hub</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Premium dark canvas from the first millisecond */
+    html, body {
+      background-color: #0A0A0B !important;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+    
+    /* Dynamically recolor Flutter Web's default blue linear progress bar to brand orange */
+    div[style*="background-color: #13b9fd"],
+    div[style*="background-color: rgb(19, 185, 253)"],
+    .flutter-loader {
+      background-color: #FF6B35 !important;
+    }
+    
+    /* Recoloring any circular progress spinner dynamic borders to brand orange */
+    div[style*="border-top-color: #13b9fd"],
+    div[style*="border-top-color: rgb(19, 185, 253)"] {
+      border-top-color: #FF6B35 !important;
+    }
+  </style>
 </head>
 <body>
   <!--

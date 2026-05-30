@@ -1,6 +1,4 @@
-// ─────────────────────────────────────────────
-//  CartScreen — Order summary and checkout
-// ─────────────────────────────────────────────
+// lib/screens/services/cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../utils/app_theme.dart';
@@ -8,6 +6,7 @@ import '../../providers/cart_provider.dart';
 import '../../providers/app_provider.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/glass.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -37,7 +36,7 @@ class _CartScreenState extends State<CartScreen> {
         .toList();
 
     if (mounted) {
-      context.read<AppProvider>().addOrder(orderItems, cart.grandTotal);
+      await context.read<AppProvider>().addOrder(orderItems, cart.grandTotal);
       cart.clear();
       setState(() {
         _isOrdering = false;
@@ -50,148 +49,143 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your Cart 🛒'),
-        backgroundColor: Colors.white,
-        actions: [
-          if (cart.items.isNotEmpty && !_orderPlaced)
-            TextButton(
-              onPressed: () => _showClearDialog(context),
-              child: const Text(
-                'Clear',
-                style:
-                    TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600),
+    return AuroraBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Your Cart 🛒'),
+          backgroundColor: Colors.transparent,
+          actions: [
+            if (cart.items.isNotEmpty && !_orderPlaced)
+              TextButton(
+                onPressed: () => _showClearDialog(context),
+                child: const Text(
+                  'Clear',
+                  style: TextStyle(
+                    color: AppTheme.statusRejected,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
-        ],
-      ),
-      body: _orderPlaced
-          ? _buildSuccessView()
-          : cart.items.isEmpty
-              ? const EmptyState(
-                  emoji: '🛒',
-                  title: 'Your cart is empty',
-                  subtitle:
-                      'Add items from the night canteen to place an order',
-                )
-              : Column(
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          // ── Cart items ─────────────────────────────
-                          ...cart.items.map((ci) => _CartItemTile(
-                                cartItem: ci,
-                              )),
+          ],
+        ),
+        body: _orderPlaced
+            ? _buildSuccessView()
+            : cart.items.isEmpty
+                ? const EmptyState(
+                    emoji: '🛒',
+                    title: 'Your cart is empty',
+                    subtitle: 'Add items from the night canteen to place an order',
+                  )
+                : Column(
+                    children: [
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            // ── Cart items ─────────────────────────────
+                            ...cart.items.map((ci) => _CartItemTile(
+                                  cartItem: ci,
+                                )),
 
-                          const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                          // ── Delivery address ──────────────────────
-                          _buildAddressCard(),
+                            // ── Delivery address ──────────────────────
+                            _buildAddressCard(),
 
-                          const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                          // ── Bill summary ──────────────────────────
-                          _buildBillSummary(cart),
+                            // ── Bill summary ──────────────────────────
+                            _buildBillSummary(cart),
 
-                          const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                          // ── Terms note ────────────────────────────
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryLight,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.info_outline_rounded,
-                                    size: 14, color: AppTheme.primary),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Delivery to your hostel door. Estimated: 15–20 minutes',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.primary,
+                            // ── Terms note ────────────────────────────
+                            GlassCard(
+                              padding: const EdgeInsets.all(12),
+                              radius: AppTheme.radiusSm,
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.info_outline_rounded,
+                                      size: 14, color: AppTheme.primaryOrange),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Delivery to your hostel door. Estimated: 15–20 minutes',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textWhite,
+                                      ),
                                     ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ── Place order button ────────────────────
+                      Container(
+                        padding: EdgeInsets.fromLTRB(
+                            16, 16, 16,
+                            MediaQuery.of(context).padding.bottom + 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceDark.withOpacity(0.9),
+                          border: Border(
+                              top: BorderSide(color: Colors.white.withOpacity(0.08))),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total to pay',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.textGrey,
+                                  ),
+                                ),
+                                Text(
+                                  '₹${cart.grandTotal.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textWhite,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            GradientButton(
+                              label: 'Place Order  ·  Pay ₹${cart.grandTotal.toStringAsFixed(0)}',
+                              onPressed: _placeOrder,
+                              loading: _isOrdering,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-
-                    // ── Place order button ────────────────────
-                    Container(
-                      padding: EdgeInsets.fromLTRB(
-                          16, 12, 16,
-                          MediaQuery.of(context).padding.bottom + 12),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                            top: BorderSide(color: AppTheme.divider)),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Total to pay',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.textMedium,
-                                ),
-                              ),
-                              Text(
-                                '₹${cart.grandTotal.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.textDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          PrimaryButton(
-                            label: 'Place Order  ·  Pay ₹${cart.grandTotal.toStringAsFixed(0)}',
-                            onTap: _placeOrder,
-                            isLoading: _isOrdering,
-                            color: AppTheme.secondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+      ),
     );
   }
 
   Widget _buildAddressCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.cardBorder),
-      ),
+    return GlassCard(
       child: Row(
         children: [
           Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppTheme.successLight,
+              color: AppTheme.statusCompleted.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.statusCompleted.withOpacity(0.35)),
             ),
             child: const Icon(Icons.location_on_rounded,
-                color: AppTheme.success, size: 18),
+                color: AppTheme.statusCompleted, size: 18),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -200,15 +194,14 @@ class _CartScreenState extends State<CartScreen> {
               children: [
                 Text(
                   'Delivering to',
-                  style:
-                      TextStyle(fontSize: 11, color: AppTheme.textMedium),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textGrey),
                 ),
                 Text(
                   'Your Hostel Room',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: AppTheme.textDark,
+                    color: AppTheme.textWhite,
                   ),
                 ),
               ],
@@ -220,13 +213,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildBillSummary(CartProvider cart) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.cardBorder),
-      ),
+    return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -235,18 +222,15 @@ class _CartScreenState extends State<CartScreen> {
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 15,
-              color: AppTheme.textDark,
+              color: AppTheme.textWhite,
             ),
           ),
           const SizedBox(height: 14),
-          _BillRow('Item Total',
-              '₹${cart.subtotal.toStringAsFixed(0)}'),
+          _BillRow('Item Total', '₹${cart.subtotal.toStringAsFixed(0)}'),
           const SizedBox(height: 8),
-          _BillRow('Delivery Fee',
-              '₹${cart.deliveryFee.toStringAsFixed(0)}'),
+          _BillRow('Delivery Fee', '₹${cart.deliveryFee.toStringAsFixed(0)}'),
           const SizedBox(height: 8),
-          _BillRow('GST (5%)',
-              '₹${cart.taxes.toStringAsFixed(0)}'),
+          _BillRow('GST (5%)', '₹${cart.taxes.toStringAsFixed(0)}'),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(height: 0),
@@ -275,7 +259,7 @@ class _CartScreenState extends State<CartScreen> {
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w800,
-                color: AppTheme.textDark,
+                color: AppTheme.textWhite,
               ),
             ),
             const SizedBox(height: 10),
@@ -284,14 +268,14 @@ class _CartScreenState extends State<CartScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.textMedium,
+                color: AppTheme.textGrey,
                 height: 1.5,
               ),
             ),
             const SizedBox(height: 32),
-            PrimaryButton(
+            GradientButton(
               label: 'Track Order',
-              onTap: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context),
               icon: Icons.track_changes_rounded,
             ),
           ],
@@ -317,7 +301,7 @@ class _CartScreenState extends State<CartScreen> {
               Navigator.pop(context);
             },
             child: const Text('Clear',
-                style: TextStyle(color: AppTheme.error)),
+                style: TextStyle(color: AppTheme.statusRejected)),
           ),
         ],
       ),
@@ -333,18 +317,12 @@ class _CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.cardBorder),
-      ),
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      radius: AppTheme.radiusSm,
       child: Row(
         children: [
-          Text(cartItem.foodItem.emoji,
-              style: const TextStyle(fontSize: 28)),
+          Text(cartItem.foodItem.emoji, style: const TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -355,14 +333,14 @@ class _CartItemTile extends StatelessWidget {
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: AppTheme.textDark,
+                    color: AppTheme.textWhite,
                   ),
                 ),
                 Text(
                   '₹${cartItem.foodItem.price.toStringAsFixed(0)} each',
                   style: const TextStyle(
                     fontSize: 12,
-                    color: AppTheme.textMedium,
+                    color: AppTheme.textGrey,
                   ),
                 ),
               ],
@@ -375,9 +353,8 @@ class _CartItemTile extends StatelessWidget {
                 quantity: cartItem.quantity,
                 onAdd: () =>
                     context.read<CartProvider>().addItem(cartItem.foodItem),
-                onRemove: () => context
-                    .read<CartProvider>()
-                    .removeItem(cartItem.foodItem),
+                onRemove: () =>
+                    context.read<CartProvider>().removeItem(cartItem.foodItem),
               ),
               const SizedBox(height: 4),
               Text(
@@ -385,7 +362,7 @@ class _CartItemTile extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
-                  color: AppTheme.textDark,
+                  color: AppTheme.textWhite,
                 ),
               ),
             ],
@@ -414,7 +391,7 @@ class _BillRow extends StatelessWidget {
           style: TextStyle(
             fontSize: isBold ? 15 : 13,
             fontWeight: isBold ? FontWeight.w700 : FontWeight.w400,
-            color: isBold ? AppTheme.textDark : AppTheme.textMedium,
+            color: isBold ? AppTheme.textWhite : AppTheme.textGrey,
           ),
         ),
         Text(
@@ -422,7 +399,7 @@ class _BillRow extends StatelessWidget {
           style: TextStyle(
             fontSize: isBold ? 15 : 13,
             fontWeight: isBold ? FontWeight.w800 : FontWeight.w500,
-            color: isBold ? AppTheme.primary : AppTheme.textDark,
+            color: isBold ? AppTheme.primaryOrange : AppTheme.textWhite,
           ),
         ),
       ],

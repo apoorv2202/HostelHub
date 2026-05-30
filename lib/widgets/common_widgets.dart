@@ -32,8 +32,11 @@ class PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: (enabled && !isLoading) ? onTap : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: color ?? AppTheme.primary,
-          disabledBackgroundColor: AppTheme.primary.withOpacity(0.5),
+          backgroundColor: color ?? AppTheme.primaryOrange,
+          disabledBackgroundColor: AppTheme.primaryOrange.withOpacity(0.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
         ),
         child: isLoading
             ? const SizedBox(
@@ -48,10 +51,10 @@ class PrimaryButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 18),
+                    Icon(icon, size: 18, color: Colors.white),
                     const SizedBox(width: 8),
                   ],
-                  Text(label),
+                  Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
               ),
       ),
@@ -86,7 +89,7 @@ class SectionHeader extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.textDark,
+                color: AppTheme.textWhite,
                 letterSpacing: -0.3,
               ),
             ),
@@ -95,7 +98,7 @@ class SectionHeader extends StatelessWidget {
                 subtitle!,
                 style: const TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textMedium,
+                  color: AppTheme.textGrey,
                 ),
               ),
           ],
@@ -123,29 +126,29 @@ class StatusChip extends StatelessWidget {
 
   factory StatusChip.pending() => const StatusChip(
         label: 'Pending',
-        bgColor: Color(0xFFFFF8E1),
-        textColor: Color(0xFFF59E0B),
+        bgColor: Color(0x26FFB020),
+        textColor: Color(0xFFFFB020),
         icon: Icons.schedule_rounded,
       );
 
   factory StatusChip.inProgress() => const StatusChip(
         label: 'In Progress',
-        bgColor: Color(0xFFEFF6FF),
+        bgColor: Color(0x263B82F6),
         textColor: Color(0xFF3B82F6),
         icon: Icons.autorenew_rounded,
       );
 
   factory StatusChip.completed() => const StatusChip(
         label: 'Completed',
-        bgColor: AppTheme.successLight,
-        textColor: AppTheme.success,
+        bgColor: Color(0x2622C55E),
+        textColor: Color(0xFF22C55E),
         icon: Icons.check_circle_rounded,
       );
 
   factory StatusChip.rejected() => const StatusChip(
         label: 'Rejected',
-        bgColor: AppTheme.errorLight,
-        textColor: AppTheme.error,
+        bgColor: Color(0x26EF4444),
+        textColor: Color(0xFFEF4444),
         icon: Icons.cancel_rounded,
       );
 
@@ -156,6 +159,7 @@ class StatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: textColor.withOpacity(0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -191,7 +195,7 @@ class VegBadge extends StatelessWidget {
       height: 16,
       decoration: BoxDecoration(
         border: Border.all(
-          color: isVeg ? AppTheme.success : AppTheme.error,
+          color: isVeg ? AppTheme.statusCompleted : AppTheme.statusRejected,
           width: 1.5,
         ),
         borderRadius: BorderRadius.circular(3),
@@ -201,7 +205,7 @@ class VegBadge extends StatelessWidget {
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: isVeg ? AppTheme.success : AppTheme.error,
+            color: isVeg ? AppTheme.statusCompleted : AppTheme.statusRejected,
             shape: BoxShape.circle,
           ),
         ),
@@ -233,12 +237,11 @@ class ImageUploadTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.successLight : Colors.white,
+          color: selected ? AppTheme.successLight : AppTheme.surfaceDark,
           border: Border.all(
             color: selected
-                ? AppTheme.success
+                ? AppTheme.statusCompleted
                 : AppTheme.cardBorder,
-            style: selected ? BorderStyle.solid : BorderStyle.solid,
             width: 1.5,
           ),
           borderRadius: BorderRadius.circular(14),
@@ -250,13 +253,13 @@ class ImageUploadTile extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: selected
-                    ? AppTheme.success.withOpacity(0.1)
+                    ? AppTheme.statusCompleted.withOpacity(0.12)
                     : AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 selected ? Icons.check_circle_rounded : icon,
-                color: selected ? AppTheme.success : AppTheme.primary,
+                color: selected ? AppTheme.statusCompleted : AppTheme.primaryOrange,
                 size: 22,
               ),
             ),
@@ -270,7 +273,7 @@ class ImageUploadTile extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: AppTheme.textDark,
+                      color: AppTheme.textWhite,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -279,15 +282,15 @@ class ImageUploadTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color:
-                          selected ? AppTheme.success : AppTheme.textMedium,
+                          selected ? AppTheme.statusCompleted : AppTheme.textGrey,
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
+            const Icon(
               Icons.chevron_right_rounded,
-              color: AppTheme.textLight,
+              color: AppTheme.textFaint,
             ),
           ],
         ),
@@ -326,7 +329,7 @@ class EmptyState extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.textDark,
+                color: AppTheme.textWhite,
               ),
               textAlign: TextAlign.center,
             ),
@@ -335,7 +338,7 @@ class EmptyState extends StatelessWidget {
               subtitle,
               style: const TextStyle(
                 fontSize: 13,
-                color: AppTheme.textMedium,
+                color: AppTheme.textGrey,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
@@ -368,7 +371,7 @@ class QuantityStepper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.primary,
+        color: AppTheme.primaryOrange,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -427,11 +430,11 @@ class InfoRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: (iconColor ?? AppTheme.primary).withOpacity(0.1),
+              color: (iconColor ?? AppTheme.primaryOrange).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon,
-                size: 18, color: iconColor ?? AppTheme.primary),
+                size: 18, color: iconColor ?? AppTheme.primaryOrange),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -442,7 +445,7 @@ class InfoRow extends StatelessWidget {
                   label,
                   style: const TextStyle(
                     fontSize: 11,
-                    color: AppTheme.textMedium,
+                    color: AppTheme.textGrey,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -451,7 +454,7 @@ class InfoRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textDark,
+                    color: AppTheme.textWhite,
                   ),
                 ),
               ],
@@ -480,11 +483,14 @@ class LoadingOverlay extends StatelessWidget {
       children: [
         child,
         if (isLoading)
-          const Positioned.fill(
+          Positioned.fill(
             child: ColoredBox(
-              color: Color(0x80FFFFFF),
-              child: Center(
-                child: CircularProgressIndicator(color: AppTheme.primary),
+              color: Colors.black.withOpacity(0.65), // Dark overlay instead of white!
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: AppTheme.primaryOrange, // Brand Orange instead of blue!
+                  strokeWidth: 3.5,
+                ),
               ),
             ),
           ),

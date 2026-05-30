@@ -88,9 +88,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
         title: const Text('Maintenance 🔧'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.bg,
       ),
       body: _submitted
           ? _buildSuccessView()
@@ -158,7 +159,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                           subtitle: 'Lights, Fan, Socket',
                           isSelected: _selectedCategory == 'Electrician',
                           color: const Color(0xFFF59E0B),
-                          bgColor: const Color(0xFFFFFBEB),
+                          bgColor: AppTheme.surfaceDark,
                           onTap: () => setState(() {
                             _selectedCategory = 'Electrician';
                             _selectedIssue = null;
@@ -171,7 +172,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                           subtitle: 'Bed, Chair, Door',
                           isSelected: _selectedCategory == 'Furniture',
                           color: const Color(0xFF8B5CF6),
-                          bgColor: const Color(0xFFF5F3FF),
+                          bgColor: AppTheme.surfaceDark,
                           onTap: () => setState(() {
                             _selectedCategory = 'Furniture';
                             _selectedIssue = null;
@@ -207,10 +208,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                               decoration: BoxDecoration(
                                 color: selected
                                     ? AppTheme.primaryLight
-                                    : Colors.white,
+                                    : AppTheme.surfaceDark,
                                 border: Border.all(
                                   color: selected
-                                      ? AppTheme.primary
+                                      ? AppTheme.primaryOrange
                                       : AppTheme.cardBorder,
                                   width: selected ? 1.5 : 1,
                                 ),
@@ -229,7 +230,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                       color: selected
-                                          ? AppTheme.primary
+                                          ? AppTheme.primaryOrange
                                           : AppTheme.textMedium,
                                     ),
                                   ),

@@ -1,6 +1,4 @@
-// ─────────────────────────────────────────────
-//  user_model.dart
-// ─────────────────────────────────────────────
+import 'user.dart';
 
 enum VerificationStatus { pending, verified, rejected }
 
@@ -10,6 +8,7 @@ class UserModel {
   final String college;
   final String hostel;
   final String roomNumber;
+  final UserRole role;
   final VerificationStatus verificationStatus;
   final String? messCardPath;
   final String? idCardPath;
@@ -20,6 +19,7 @@ class UserModel {
     required this.college,
     required this.hostel,
     required this.roomNumber,
+    required this.role,
     this.verificationStatus = VerificationStatus.pending,
     this.messCardPath,
     this.idCardPath,
@@ -31,6 +31,7 @@ class UserModel {
     String? college,
     String? hostel,
     String? roomNumber,
+    UserRole? role,
     VerificationStatus? verificationStatus,
     String? messCardPath,
     String? idCardPath,
@@ -41,9 +42,11 @@ class UserModel {
       college: college ?? this.college,
       hostel: hostel ?? this.hostel,
       roomNumber: roomNumber ?? this.roomNumber,
+      role: role ?? this.role,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       messCardPath: messCardPath ?? this.messCardPath,
       idCardPath: idCardPath ?? this.idCardPath,
     );
   }
 }
+

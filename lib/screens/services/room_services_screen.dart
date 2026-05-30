@@ -47,9 +47,10 @@ class _RoomServicesScreenState extends State<RoomServicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
         title: const Text('Room Services'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.bg,
       ),
       body: _submitted ? _buildSuccessView() : _buildFormView(),
     );
@@ -196,9 +197,9 @@ class _RoomServicesScreenState extends State<RoomServicesScreen> {
                 firstDate: DateTime.now(),
                 lastDate: DateTime.now().add(const Duration(days: 14)),
                 builder: (ctx, child) => Theme(
-                  data: ThemeData.light().copyWith(
-                    colorScheme: const ColorScheme.light(
-                      primary: AppTheme.primary,
+                  data: ThemeData.dark().copyWith(
+                    colorScheme: const ColorScheme.dark(
+                      primary: AppTheme.primaryOrange,
                     ),
                   ),
                   child: child!,
@@ -211,14 +212,14 @@ class _RoomServicesScreenState extends State<RoomServicesScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.surfaceDark,
                 border: Border.all(color: AppTheme.cardBorder),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.calendar_today_rounded,
-                      color: AppTheme.primary, size: 20),
+                      color: AppTheme.primaryOrange, size: 20),
                   const SizedBox(width: 12),
                   Text(
                     '${_scheduledDate.day} ${_monthName(_scheduledDate.month)} ${_scheduledDate.year}',
@@ -256,9 +257,9 @@ class _RoomServicesScreenState extends State<RoomServicesScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 9),
                   decoration: BoxDecoration(
-                    color: selected ? AppTheme.primary : Colors.white,
+                    color: selected ? AppTheme.primaryOrange : AppTheme.surfaceDark,
                     border: Border.all(
-                      color: selected ? AppTheme.primary : AppTheme.cardBorder,
+                      color: selected ? AppTheme.primaryOrange : AppTheme.cardBorder,
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -343,9 +344,9 @@ class _ServiceOption extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryLight : Colors.white,
+          color: isSelected ? AppTheme.primaryLight : AppTheme.surfaceDark,
           border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.cardBorder,
+            color: isSelected ? AppTheme.primaryOrange : AppTheme.cardBorder,
             width: isSelected ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(16),
@@ -357,8 +358,8 @@ class _ServiceOption extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppTheme.primary.withOpacity(0.1)
-                    : const Color(0xFFF3F4F6),
+                    ? AppTheme.primaryOrange.withOpacity(0.1)
+                    : AppTheme.surfaceDark.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
@@ -402,7 +403,7 @@ class _ServiceOption extends StatelessWidget {
             ),
             if (isSelected)
               const Icon(Icons.check_circle_rounded,
-                  color: AppTheme.primary, size: 22),
+                  color: AppTheme.primaryOrange, size: 22),
           ],
         ),
       ),

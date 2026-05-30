@@ -10,6 +10,7 @@ import '../../widgets/common_widgets.dart';
 import '../main_scaffold.dart';
 import '../../services/squidex_service.dart';
 import '../../models/models.dart';
+import 'verification_states_screens.dart';
 
 class RegistrationScreen extends StatefulWidget {
   final String phone;
@@ -122,7 +123,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const MainScaffold()),
+        MaterialPageRoute(
+          builder: (_) => PendingVerificationScreen(user: provider.user!),
+        ),
         (_) => false,
       );
     }
@@ -181,11 +184,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 TextFormField(
                   initialValue: '+91 ${widget.phone}',
                   readOnly: true,
+                  style: const TextStyle(color: AppTheme.textMedium),
                   decoration: const InputDecoration(
                     labelText: 'Phone Number',
                     prefixIcon: Icon(Icons.phone_outlined),
                     filled: true,
-                    fillColor: Color(0xFFF9FAFB),
+                    fillColor: AppTheme.surfaceDark,
                   ),
                 ),
 
@@ -201,14 +205,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ? const Center(child: CircularProgressIndicator()) 
                 : DropdownButtonFormField<String>(
                   value: _selectedCollege,
+                  dropdownColor: AppTheme.surfaceDark,
+                  style: const TextStyle(color: AppTheme.textWhite),
                   decoration: const InputDecoration(
                     labelText: 'College',
                     prefixIcon: Icon(Icons.school_outlined),
                   ),
-                  hint: const Text('Select your college'),
+                  hint: const Text('Select your college', style: TextStyle(color: AppTheme.textFaint)),
                   isExpanded: true,
                   items: _colleges
-                      .map((c) => DropdownMenuItem(value: c.name, child: Text(c.name)))
+                      .map((c) => DropdownMenuItem(
+                            value: c.name,
+                            child: Text(c.name, style: const TextStyle(color: AppTheme.textWhite)),
+                          ))
                       .toList(),
                   onChanged: (val) => setState(() {
                     _selectedCollege = val;
@@ -226,22 +235,28 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ? const SizedBox.shrink()
                 : DropdownButtonFormField<String>(
                   value: _selectedHostel,
+                  dropdownColor: AppTheme.surfaceDark,
+                  style: const TextStyle(color: AppTheme.textWhite),
                   decoration: InputDecoration(
                     labelText: 'Hostel',
                     prefixIcon: const Icon(Icons.apartment_outlined),
                     filled: true,
                     fillColor: _selectedCollege == null
-                        ? const Color(0xFFF3F4F6)
-                        : Colors.white,
+                        ? AppTheme.surfaceDark.withOpacity(0.5)
+                        : AppTheme.surfaceDark,
                   ),
                   hint: Text(
                     _selectedCollege == null
                         ? 'Select college first'
                         : 'Select your hostel',
+                    style: const TextStyle(color: AppTheme.textFaint),
                   ),
                   isExpanded: true,
                   items: _hostels
-                      .map((h) => DropdownMenuItem(value: h, child: Text(h)))
+                      .map((h) => DropdownMenuItem(
+                            value: h,
+                            child: Text(h, style: const TextStyle(color: AppTheme.textWhite)),
+                          ))
                       .toList(),
                   onChanged: _selectedCollege == null
                       ? null

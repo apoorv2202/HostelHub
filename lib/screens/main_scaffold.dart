@@ -37,22 +37,18 @@ class _MainScaffoldState extends State<MainScaffold> {
         children: _screens,
       ),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
+        decoration: const BoxDecoration(
+          border: Border(
+            top: BorderSide(color: AppTheme.cardBorder, width: 1),
+          ),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (i) => setState(() => _currentIndex = i),
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.primary,
-          unselectedItemColor: AppTheme.textLight,
+          backgroundColor: AppTheme.surfaceDark,
+          selectedItemColor: AppTheme.primaryOrange,
+          unselectedItemColor: AppTheme.textFaint,
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 11,

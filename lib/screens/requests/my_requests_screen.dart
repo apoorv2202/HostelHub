@@ -41,16 +41,22 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
     final maintenanceReqs = provider.maintenanceRequests;
 
     return Scaffold(
-      backgroundColor: AppTheme.bg,
+      backgroundColor: AppTheme.backgroundBlack,
       appBar: AppBar(
         title: const Text('My Requests'),
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            onPressed: () => context.read<AppProvider>().refreshRequests(),
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.textFaint),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabCtrl,
-          labelColor: AppTheme.primary,
-          unselectedLabelColor: AppTheme.textMedium,
-          indicatorColor: AppTheme.primary,
+          labelColor: AppTheme.primaryOrange,
+          unselectedLabelColor: AppTheme.textFaint,
+          indicatorColor: AppTheme.primaryOrange,
           indicatorWeight: 2.5,
           labelStyle:
               const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
@@ -111,7 +117,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddRequestSheet(context),
-        backgroundColor: AppTheme.primary,
+        backgroundColor: AppTheme.primaryOrange,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'New Request',
@@ -124,7 +130,7 @@ class _MyRequestsScreenState extends State<MyRequestsScreen>
   void _showAddRequestSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -231,7 +237,7 @@ class _RequestCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.cardBorder),
       ),
@@ -298,7 +304,7 @@ class _RequestCard extends StatelessWidget {
             ),
           ),
 
-          const Divider(height: 0),
+          const Divider(height: 0, color: AppTheme.cardBorder),
 
           // ── Footer ────────────────────────────────
           Padding(
@@ -369,7 +375,7 @@ class _RequestCard extends StatelessWidget {
                     'Staff on their way...',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF3B82F6),
+                      color: AppTheme.primaryOrange,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -378,9 +384,9 @@ class _RequestCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: 0.6,
-                      backgroundColor: const Color(0xFFEFF6FF),
+                      backgroundColor: AppTheme.primaryOrange.withOpacity(0.12),
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF3B82F6)),
+                          AppTheme.primaryOrange),
                       minHeight: 5,
                     ),
                   ),
