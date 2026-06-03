@@ -22,6 +22,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   late TabController _tabController;
   bool _isLoading = true;
 
+  final _annTitleCtrl = TextEditingController();
+  final _annContentCtrl = TextEditingController();
+
   List<Map<String, dynamic>> _students = [];
   List<Map<String, dynamic>> _lostRequests = [];
   List<Map<String, dynamic>> _pendingProfiles = [];
@@ -29,7 +32,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _fetchWardenData();
   }
 
@@ -52,7 +55,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       // Filter lost requests by Warden's college canteen/hostel
       final List<Map<String, dynamic>> scopedLost = [];
       for (var r in lostRes as List) {
-        final profile = r['profiles'];
+        final profile = r['profiles'] as Map?;
         if (profile != null && profile['college'] == widget.user.college) {
           scopedLost.add(r as Map<String, dynamic>);
         }
@@ -64,6 +67,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           .select()
           .eq('verification_status', 'pending')
           .eq('college', widget.user.college);
+
+      // 4. Fetch announcements
+      await context.read<AppProvider>().fetchAnnouncements();
 
       setState(() {
         _students = List<Map<String, dynamic>>.from(studentRes as List);
@@ -122,6 +128,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void dispose() {
+    _annTitleCtrl.dispose();
+    _annContentCtrl.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -164,6 +172,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             Tab(text: 'Students'),
             Tab(text: 'Lost Cards'),
             Tab(text: 'Approvals'),
+            Tab(text: 'Announcements'),
             Tab(text: 'Info'),
           ],
         ),
@@ -176,6 +185,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 _buildStudentTab(),
                 _buildLostTab(),
                 _buildApprovalsTab(),
+                _buildAnnouncementsTab(),
                 _buildInfoTab(),
               ],
             ),
@@ -248,7 +258,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       itemCount: _lostRequests.length,
       itemBuilder: (context, index) {
         final req = _lostRequests[index];
-        final profile = req['profiles'] ?? {};
+        final profile = (req['profiles'] ?? {}) as Map;
         final isApproved = req['status'] == 'approved' || req['status'] == 'completed';
 
         return Card(
@@ -262,7 +272,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      req['item_type'] == 'mess_card' ? 'Lost Mess Card 💳' : 'Lost College ID 📛',
+                      req['item_type'] == 'mess_card'
+                          ? 'Lost Mess Card 💳'
+                          : req['item_type'] == 'id_card'
+                              ? 'Lost College ID 📛'
+                              : 'Lost Room Keys 🔑',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     Container(
@@ -738,5 +752,144 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildAnnouncementsTab() {
+    final announcements = context.watch<AppProvider>().announcements;
+    final isPublishing = context.watch<AppProvider>().isLoading;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            color: AppTheme.surfaceDark,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AppTheme.cardBorder),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Create New Announcement 📢',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textWhite,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _annTitleCtrl,
+                    style: const TextStyle(color: AppTheme.textWhite),
+                    decoration: const InputDecoration(
+                      labelText: 'Announcement Title',
+                      hintText: 'e.g., Lift Maintenance in Block B',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _annContentCtrl,
+                    maxLines: 3,
+                    style: const TextStyle(color: AppTheme.textWhite),
+                    decoration: const InputDecoration(
+                      labelText: 'Announcement Content',
+                      hintText: 'e.g., Lifts will be shut down from 2 PM to 5 PM...',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: isPublishing
+                        ? null
+                        : () async {
+                            final title = _annTitleCtrl.text.trim();
+                            final content = _annContentCtrl.text.trim();
+                            if (title.isEmpty || content.isEmpty) {
+                              _showSnack('Please fill in both fields', Colors.red);
+                              return;
+                            }
+                            await context.read<AppProvider>().publishAnnouncement(title, content);
+                            _annTitleCtrl.clear();
+                            _annContentCtrl.clear();
+                            _showSnack('Announcement published successfully! ✓', AppTheme.statusCompleted);
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryOrange,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Publish & Broadcast',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Previous Announcements',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textWhite,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (announcements.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'No announcements made yet.',
+                  style: TextStyle(color: AppTheme.textGrey),
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: announcements.length,
+              itemBuilder: (context, index) {
+                final ann = announcements[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: AppTheme.primaryLight,
+                      child: Icon(Icons.campaign_rounded, color: AppTheme.primaryOrange),
+                    ),
+                    title: Text(
+                      ann.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textWhite),
+                    ),
+                    subtitle: Text(
+                      '${ann.content}\n${_formatTimeAgo(ann.createdAt)}',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textGrey),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 }

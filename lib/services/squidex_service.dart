@@ -45,7 +45,11 @@ class SquidexService {
     final url = Uri.parse('$_apiUrl/food-items');
     final response = await http.get(
       url,
-      headers: {'Authorization': 'Bearer $_accessToken'},
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
     ).timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200) {
@@ -54,6 +58,30 @@ class SquidexService {
       return items.map((item) {
         final id = item['id'];
         final fieldData = item['data'];
+        
+        String? imageUrl;
+        final possibleImageFields = ['image', 'photo', 'picture', 'imageUrl', 'image_url'];
+        for (final field in possibleImageFields) {
+          final fieldVal = fieldData[field]?['iv'];
+          if (fieldVal != null) {
+            if (fieldVal is List && fieldVal.isNotEmpty) {
+              final firstVal = fieldVal.first.toString();
+              if (firstVal.startsWith('http')) {
+                imageUrl = firstVal;
+              } else {
+                imageUrl = 'https://cloud.squidex.io/api/assets/$_appName/$firstVal';
+              }
+              break;
+            } else if (fieldVal is String && fieldVal.isNotEmpty) {
+              if (fieldVal.startsWith('http')) {
+                imageUrl = fieldVal;
+              } else {
+                imageUrl = 'https://cloud.squidex.io/api/assets/$_appName/$fieldVal';
+              }
+              break;
+            }
+          }
+        }
         
         return FoodItem(
           id: id,
@@ -64,6 +92,7 @@ class SquidexService {
           category: fieldData['category']?['iv'] ?? 'Other',
           emoji: fieldData['emoji']?['iv'] ?? '🍔',
           description: fieldData['description']?['iv'] ?? '',
+          imageUrl: imageUrl,
         );
       }).toList();
     } else {

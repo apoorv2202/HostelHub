@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../models/user.dart';
 import '../../providers/app_provider.dart';
 import '../../widgets/common_widgets.dart';
@@ -117,11 +118,27 @@ class _StaffIdLoginScreenState extends State<StaffIdLoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'ID Card / Staff ID Number',
                     prefixIcon: const Icon(Icons.badge_outlined, color: AppTheme.primary),
-                    hintText: 'e.g. WDN001, CLN001, CAN001, MNT001',
+                    hintText: 'e.g. RVCE-WARDEN-01, BMS-CLEANER-01',
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
                       return 'Please enter your ID number';
+                    }
+                    final idInput = val.trim().toUpperCase();
+                    final matches = demoUsers.where((u) => u.id.toUpperCase() == idInput).toList();
+                    if (matches.isEmpty) {
+                      return 'Invalid ID. Please check your credentials.';
+                    }
+                    final correctRole = matches.any((u) {
+                      if (widget.role == UserRole.student && u.role == 'student') return true;
+                      if (widget.role == UserRole.warden && u.role == 'warden') return true;
+                      if (widget.role == UserRole.cleaning && u.role == 'cleaner') return true;
+                      if (widget.role == UserRole.canteen && u.role == 'canteen') return true;
+                      if (widget.role == UserRole.maintenance && u.role == 'maintenance') return true;
+                      return false;
+                    });
+                    if (!correctRole) {
+                      return 'This ID belongs to a different role.';
                     }
                     return null;
                   },
@@ -146,7 +163,7 @@ class _StaffIdLoginScreenState extends State<StaffIdLoginScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Demo mode: Enter any ID number (e.g. WDN001 for Warden, CAN001 for Canteen, CLN001 for Cleaner, MNT001 for Maintenance) to instantly verify and enter.',
+                          'Demo mode: Enter a valid campus ID (e.g., RVCE-WARDEN-01 for Warden, RVCE-CANTEEN-01 for Canteen, BMS-CLEANER-01 for Cleaner, PES-MAINT-01 for Maintenance) to instantly verify and enter.',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.primary,

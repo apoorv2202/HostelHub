@@ -290,7 +290,7 @@ class _FoodItemCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── Emoji thumbnail ───────────────────────
+          // ── Emoji or Image thumbnail ──────────────
           Container(
             width: 64,
             height: 64,
@@ -298,11 +298,42 @@ class _FoodItemCard extends StatelessWidget {
               color: AppTheme.bg,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Text(
-                item.emoji,
-                style: const TextStyle(fontSize: 32),
-              ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      item.imageUrl!,
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.primaryOrange,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Text(
+                            item.emoji,
+                            style: const TextStyle(fontSize: 32),
+                          ),
+                        );
+                      },
+                    )
+                  : Center(
+                      child: Text(
+                        item.emoji,
+                        style: const TextStyle(fontSize: 32),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 14),

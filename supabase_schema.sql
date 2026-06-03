@@ -62,7 +62,7 @@ CREATE TABLE public.service_requests (
   cleaning_type text CHECK (cleaning_type IN ('deep_cleaning','normal_cleaning')),
   description text,
   status text DEFAULT 'pending' CHECK (status IN ('pending','accepted','completed')),
-  assigned_cleaner uuid REFERENCES public.profiles(id),
+  assigned_cleaner uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at timestamptz DEFAULT now()
 );
 
@@ -94,9 +94,10 @@ CREATE TABLE public.orders (
 CREATE TABLE public.lost_requests (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
-  item_type text CHECK (item_type IN ('mess_card','id_card')),
+  item_type text CHECK (item_type IN ('mess_card','id_card','room_keys')),
   payment_status text DEFAULT 'pending' CHECK (payment_status IN ('pending','paid')),
   status text DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','completed')),
+
   created_at timestamptz DEFAULT now()
 );
 
@@ -109,6 +110,15 @@ CREATE TABLE public.food_stock (
   updated_at timestamptz DEFAULT now()
 );
 
+-- Announcements
+CREATE TABLE public.announcements (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  college text NOT NULL,
+  title text NOT NULL,
+  content text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
 -- =========================================================================
 -- 4. ENABLE ROW LEVEL SECURITY ON ALL TABLES
 -- =========================================================================
@@ -118,6 +128,7 @@ ALTER TABLE public.maintenance_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lost_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.food_stock ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
 -- =========================================================================
 -- 5. RESILIENT HELPER FUNCTIONS (Explicitly using public. profiles)
@@ -238,10 +249,10 @@ CREATE POLICY "Students insert own maintenance requests" ON public.maintenance_r
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Wardens can view all maintenance requests" ON public.maintenance_requests
-  FOR SELECT USING (public.get_user_role(auth.uid()) = 'warden');
+  FOR SELECT USING (public.get_user_role(auth.uid()) IN ('warden', 'admin'));
 
 CREATE POLICY "Wardens can update maintenance requests" ON public.maintenance_requests
-  FOR UPDATE USING (public.get_user_role(auth.uid()) = 'warden');
+  FOR UPDATE USING (public.get_user_role(auth.uid()) IN ('warden', 'admin'));
 
 -- --- ORDERS POLICIES (Canteen College Restrictions) ---
 CREATE POLICY "Students view own orders" ON public.orders
@@ -276,10 +287,10 @@ CREATE POLICY "Students insert own lost requests" ON public.lost_requests
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Wardens can view lost requests" ON public.lost_requests
-  FOR SELECT USING (public.get_user_role(auth.uid()) = 'warden');
+  FOR SELECT USING (public.get_user_role(auth.uid()) IN ('warden', 'admin'));
 
 CREATE POLICY "Wardens can update lost requests" ON public.lost_requests
-  FOR UPDATE USING (public.get_user_role(auth.uid()) = 'warden');
+  FOR UPDATE USING (public.get_user_role(auth.uid()) IN ('warden', 'admin'));
 
 -- --- FOOD STOCK POLICIES ---
 CREATE POLICY "Anyone can view food stock" ON public.food_stock
@@ -287,6 +298,14 @@ CREATE POLICY "Anyone can view food stock" ON public.food_stock
 
 CREATE POLICY "Canteen can manage food stock" ON public.food_stock
   FOR ALL USING (public.get_user_role(auth.uid()) = 'canteen');
+
+-- --- ANNOUNCEMENTS POLICIES ---
+CREATE POLICY "Anyone can view announcements" ON public.announcements
+  FOR SELECT USING (true);
+
+CREATE POLICY "Wardens can manage announcements" ON public.announcements
+  FOR ALL USING (public.get_user_role(auth.uid()) IN ('warden', 'admin'));
+
 
 
 -- =========================================================================
@@ -345,4 +364,5 @@ ALTER PUBLICATION supabase_realtime ADD TABLE
   public.maintenance_requests, 
   public.orders, 
   public.lost_requests, 
-  public.food_stock;
+  public.food_stock,
+  public.announcements;

@@ -25,6 +25,13 @@ class AppProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   UserModel? get user => _user;
 
+  // ── Announcements ─────────────────────────
+  List<AnnouncementModel> _announcements = [];
+  List<AnnouncementModel> get announcements => _announcements;
+  RealtimeChannel? _announcementsChannel;
+  RealtimeChannel? _foodStockChannel;
+  RealtimeChannel? _requestsChannel;
+
   // ── Requests ──────────────────────────────
   List<RequestModel> _requests = [];
   List<RequestModel> get requests => _requests;
@@ -34,6 +41,10 @@ class AppProvider extends ChangeNotifier {
 
   List<RequestModel> get maintenanceRequests =>
       _requests.where((r) => r.type == RequestType.maintenance).toList();
+
+  List<RequestModel> get lostItemRequests =>
+      _requests.where((r) => r.type == RequestType.lostItem).toList();
+
 
   // ── Orders ────────────────────────────────
   List<OrderModel> _orders = [];
@@ -93,6 +104,11 @@ class AppProvider extends ChangeNotifier {
           idCardPath: response['id_card_path'],
         );
       }
+      // Fetch announcements and subscribe to real-time updates
+      await fetchAnnouncements();
+      _subscribeToAnnouncements();
+      _subscribeToFoodStock();
+      _subscribeToRequests();
     } catch (e) {
       print('Error fetching profile: $e');
     }
@@ -104,14 +120,17 @@ class AppProvider extends ChangeNotifier {
       
       var serviceQuery = _supabase.from('service_requests').select();
       var maintenanceQuery = _supabase.from('maintenance_requests').select();
+      var lostQuery = _supabase.from('lost_requests').select();
 
       if (_user?.role == UserRole.student && userId != null) {
         serviceQuery = serviceQuery.eq('user_id', userId);
         maintenanceQuery = maintenanceQuery.eq('user_id', userId);
+        lostQuery = lostQuery.eq('user_id', userId);
       }
 
       final serviceData = await serviceQuery.order('created_at', ascending: false);
       final maintenanceData = await maintenanceQuery.order('created_at', ascending: false);
+      final lostData = await lostQuery.order('created_at', ascending: false);
 
       final List<RequestModel> fetchedRequests = [];
 
@@ -143,6 +162,35 @@ class AppProvider extends ChangeNotifier {
             : null,
       )));
 
+      // Map lost requests
+      fetchedRequests.addAll((lostData as List).map((e) {
+        String title = 'Lost Card';
+        if (e['item_type'] == 'mess_card') {
+          title = 'Lost Mess Card';
+        } else if (e['item_type'] == 'id_card') {
+          title = 'Lost ID Card';
+        } else if (e['item_type'] == 'room_keys') {
+          title = 'Lost Room Keys';
+        }
+        return RequestModel(
+          id: e['id'].toString(),
+          type: RequestType.lostItem,
+          title: title,
+          description: 'Payment Status: ${e['payment_status']}',
+          status: e['status'] == 'approved' 
+              ? RequestStatus.inProgress 
+              : (e['status'] == 'completed' 
+                  ? RequestStatus.completed 
+                  : (e['status'] == 'rejected' 
+                      ? RequestStatus.rejected 
+                      : RequestStatus.pending)),
+          createdAt: DateTime.parse(e['created_at']),
+          completedAt: null,
+          category: 'Lost Request',
+          imagePath: null,
+        );
+      }));
+
       // Sort combined list by created_at descending
       fetchedRequests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _requests = fetchedRequests;
@@ -150,6 +198,29 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Error fetching requests: $e');
+    }
+  }
+
+  // ── Add Lost Card/Key request ─────────────────
+  Future<void> addLostRequest(String itemType) async {
+    try {
+      String dbItemType = 'mess_card';
+      if (itemType == 'ID Card') {
+        dbItemType = 'id_card';
+      } else if (itemType == 'Room Keys' || itemType == 'Keys') {
+        dbItemType = 'room_keys';
+      }
+
+      final req = {
+        'user_id': _supabase.auth.currentUser!.id,
+        'item_type': dbItemType,
+        'payment_status': 'paid',
+        'status': 'pending',
+      };
+      await _supabase.from('lost_requests').insert(req);
+      await _fetchRequests();
+    } catch (e) {
+      print('Error adding lost request: $e');
     }
   }
 
@@ -284,22 +355,129 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  // ── Login with ID Card ────────────────────
+  Future<bool> loginWithIdCard(String id, UserRole role) async {
+    _setLoading(true);
+    _errorMessage = null;
+    try {
+      final matchingUser = demoUsers.firstWhere(
+        (u) => u.id.toLowerCase() == id.toLowerCase(),
+        orElse: () => const DemoUser(phone: '', role: '', college: '', hostel: '', id: '', room: ''),
+      );
+
+      if (matchingUser.phone.isEmpty) {
+        _errorMessage = 'Invalid ID. Please check your credentials.';
+        _setLoading(false);
+        return false;
+      }
+
+      // Check role mapping
+      String mappedRoleStr = matchingUser.role;
+      bool roleMatches = false;
+      if (role == UserRole.student && mappedRoleStr == 'student') roleMatches = true;
+      if (role == UserRole.warden && mappedRoleStr == 'warden') roleMatches = true;
+      if (role == UserRole.cleaning && mappedRoleStr == 'cleaner') roleMatches = true;
+      if (role == UserRole.canteen && mappedRoleStr == 'canteen') roleMatches = true;
+      if (role == UserRole.maintenance && mappedRoleStr == 'maintenance') roleMatches = true;
+
+      if (!roleMatches) {
+        _errorMessage = 'This ID is registered under a different role.';
+        _setLoading(false);
+        return false;
+      }
+
+      // Log in using password authentication (similar to verifyOtp)
+      final email = 'user_${matchingUser.phone}@hostelhub.com';
+      AuthResponse response;
+      try {
+        response = await _supabase.auth.signInWithPassword(
+          email: email,
+          password: 'testpassword123',
+        );
+      } catch (e) {
+        try {
+          response = await _supabase.auth.signUp(
+            email: email,
+            password: 'testpassword123',
+          );
+        } catch (signUpErr) {
+          _errorMessage = "Auth Error: ${signUpErr.toString()}";
+          _setLoading(false);
+          return false;
+        }
+      }
+
+      if (response.session != null) {
+        _isLoggedIn = true;
+        
+        // Auto-create/upsert profile if it doesn't exist
+        final userId = response.user!.id;
+        final profileCheck = await _supabase.from('profiles').select().eq('id', userId).maybeSingle();
+        if (profileCheck == null) {
+          // Auto register warden as verified, others as pending
+          final isWarden = role == UserRole.warden;
+          final statusStr = isWarden ? 'verified' : 'pending';
+          
+          String dbRoleStr = role.dbRoleValue;
+          String hostelStr = matchingUser.hostel;
+          String roomNumberStr = matchingUser.room;
+          
+          if (role == UserRole.maintenance) {
+            dbRoleStr = 'warden';
+            hostelStr = 'Maintenance';
+            roomNumberStr = matchingUser.id;
+          } else if (role == UserRole.cleaning) {
+            hostelStr = '';
+            roomNumberStr = matchingUser.id;
+          } else if (role == UserRole.canteen) {
+            hostelStr = '';
+            roomNumberStr = matchingUser.id;
+          } else if (role == UserRole.warden) {
+            hostelStr = '';
+            roomNumberStr = matchingUser.id;
+          }
+
+          await _supabase.from('profiles').upsert({
+            'id': userId,
+            'name': '${role.label} (${matchingUser.college})',
+            'phone': '+91${matchingUser.phone}',
+            'college': matchingUser.college,
+            'hostel': hostelStr,
+            'room_number': roomNumberStr,
+            'role': dbRoleStr,
+            'verification_status': statusStr,
+            'id_card_path': '',
+          });
+        }
+        
+        await _fetchUserProfile();
+        await _fetchRequests();
+        await _fetchOrders();
+        _setLoading(false);
+        return true;
+      } else {
+        _errorMessage = "Could not start session.";
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // ── Send OTP ─────────────────────────────
   Future<bool> sendOtp(String phone) async {
     _setLoading(true);
     _errorMessage = null;
     try {
       _currentPhone = phone.startsWith('+') ? phone : '+91$phone';
-      
-      final mockNumbers = [
-        '+919876543210', // Student
-        '+919876543211', // Warden
-        '+919876543212', // Canteen
-        '+919876543213', // Cleaner
-        '+919876543214', // Maintenance
-      ];
+      final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
 
-      if (mockNumbers.contains(_currentPhone)) {
+      final isDemo = demoUsers.any((u) => u.phone == cleanPhone);
+
+      if (isDemo) {
         _setLoading(false);
         return true; // Bypass for test numbers
       }
@@ -319,16 +497,11 @@ class AppProvider extends ChangeNotifier {
     _setLoading(true);
     _errorMessage = null;
     try {
-      final mockMappings = {
-        '+919876543210': 'student@hostelhub.com',
-        '+919876543211': 'warden@hostelhub.com',
-        '+919876543212': 'canteen@hostelhub.com',
-        '+919876543213': 'cleaner@hostelhub.com',
-        '+919876543214': 'maintenance@hostelhub.com',
-      };
+      final cleanPhone = _currentPhone!.replaceAll(RegExp(r'\D'), '').replaceFirst('91', '');
+      final isDemo = demoUsers.any((u) => u.phone == cleanPhone);
 
-      if (mockMappings.containsKey(_currentPhone) && otp == '123456') {
-        final email = mockMappings[_currentPhone]!;
+      if (isDemo && otp == '123456') {
+        final email = 'user_$cleanPhone@hostelhub.com';
         AuthResponse response;
         try {
           response = await _supabase.auth.signInWithPassword(
@@ -552,6 +725,37 @@ class AppProvider extends ChangeNotifier {
       } else if (_foodItems.isEmpty) {
         _foodItems = _getFallbackFoodItems();
       }
+
+      // Query real-time food stock overrides from Supabase
+      try {
+        final stockResponse = await _supabase.from('food_stock').select();
+        final stockMap = {
+          for (var row in stockResponse as List)
+            row['food_name'].toString().toLowerCase(): row['in_stock'] as bool
+        };
+
+        for (int i = 0; i < _foodItems.length; i++) {
+          final nameKey = _foodItems[i].name.toLowerCase();
+          if (stockMap.containsKey(nameKey)) {
+            final available = stockMap[nameKey]!;
+            final old = _foodItems[i];
+            _foodItems[i] = FoodItem(
+              id: old.id,
+              name: old.name,
+              price: old.price,
+              isVeg: old.isVeg,
+              isAvailable: available,
+              category: old.category,
+              emoji: old.emoji,
+              description: old.description,
+              imageUrl: old.imageUrl,
+            );
+          }
+        }
+      } catch (stockErr) {
+        print('Error fetching food stock overrides: $stockErr');
+      }
+
       notifyListeners();
     } catch (e) {
       print('Error fetching food items: $e');
@@ -562,21 +766,43 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  void toggleFoodAvailability(String id) {
+  Future<void> toggleFoodAvailability(String id) async {
     final idx = _foodItems.indexWhere((item) => item.id == id);
     if (idx != -1) {
       final old = _foodItems[idx];
+      final newAvailability = !old.isAvailable;
+      
       _foodItems[idx] = FoodItem(
         id: old.id,
         name: old.name,
         price: old.price,
         isVeg: old.isVeg,
-        isAvailable: !old.isAvailable,
+        isAvailable: newAvailability,
         category: old.category,
         emoji: old.emoji,
         description: old.description,
+        imageUrl: old.imageUrl,
       );
       notifyListeners();
+
+      // Persist availability override to Supabase food_stock
+      try {
+        final quantity = newAvailability ? 1 : 0;
+        final existing = await _supabase.from('food_stock').select().eq('food_name', old.name).maybeSingle();
+        if (existing != null) {
+          await _supabase.from('food_stock').update({
+            'quantity': quantity,
+            'updated_at': DateTime.now().toIso8601String(),
+          }).eq('id', existing['id']);
+        } else {
+          await _supabase.from('food_stock').insert({
+            'food_name': old.name,
+            'quantity': quantity,
+          });
+        }
+      } catch (e) {
+        print('Error updating food availability in Supabase: $e');
+      }
     }
   }
 
@@ -591,6 +817,7 @@ class AppProvider extends ChangeNotifier {
         category: 'Burger',
         emoji: '🍔',
         description: 'Delicious crispy veg patty burger with cheese and lettuce.',
+        imageUrl: null,
       ),
       FoodItem(
         id: '2',
@@ -601,6 +828,7 @@ class AppProvider extends ChangeNotifier {
         category: 'Sandwich',
         emoji: '🥪',
         description: 'Classic toasted masala sandwich with spicy green chutney.',
+        imageUrl: null,
       ),
       FoodItem(
         id: '3',
@@ -611,6 +839,7 @@ class AppProvider extends ChangeNotifier {
         category: 'Rolls',
         emoji: '🌯',
         description: 'Soft paneer tikka wrapped in a warm flaky paratha.',
+        imageUrl: null,
       ),
       FoodItem(
         id: '4',
@@ -621,6 +850,7 @@ class AppProvider extends ChangeNotifier {
         category: 'Rolls',
         emoji: '🌯',
         description: 'Double egg omelette wrapper loaded with onion and sauces.',
+        imageUrl: null,
       ),
       FoodItem(
         id: '5',
@@ -631,6 +861,7 @@ class AppProvider extends ChangeNotifier {
         category: 'Snacks',
         emoji: '🍟',
         description: 'Golden salted potato fries served with tomato ketchup.',
+        imageUrl: null,
       ),
       FoodItem(
         id: '6',
@@ -641,6 +872,7 @@ class AppProvider extends ChangeNotifier {
         category: 'Beverages',
         emoji: '🥤',
         description: 'Creamy cold chocolate milkshake blended with Oreo cookies.',
+        imageUrl: null,
       ),
     ];
   }
@@ -651,6 +883,10 @@ class AppProvider extends ChangeNotifier {
     _isLoggedIn = false;
     _requests.clear();
     _orders.clear();
+    _announcements.clear();
+    _announcementsChannel?.unsubscribe();
+    _foodStockChannel?.unsubscribe();
+    _requestsChannel?.unsubscribe();
     notifyListeners();
 
     // Fire-and-forget inside a microtask, ensuring no trace of network blocking in the current frame
@@ -675,5 +911,148 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> refreshRequests() async {
     await _fetchRequests();
+  }
+
+  Future<void> fetchAnnouncements() async {
+    try {
+      final college = _user?.college;
+      if (college != null) {
+        final response = await _supabase
+            .from('announcements')
+            .select()
+            .eq('college', college)
+            .order('created_at', ascending: false);
+        _announcements = (response as List)
+            .map((e) => AnnouncementModel.fromJson(e))
+            .toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error fetching announcements: $e');
+      if (_announcements.isEmpty) {
+        _announcements = _getFallbackAnnouncements();
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> publishAnnouncement(String title, String content) async {
+    try {
+      final college = _user?.college;
+      if (college != null) {
+        await _supabase.from('announcements').insert({
+          'college': college,
+          'title': title,
+          'content': content,
+        });
+        await fetchAnnouncements();
+      }
+    } catch (e) {
+      print('Error publishing announcement: $e');
+      final newAnn = AnnouncementModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        college: _user?.college ?? 'RVCE',
+        title: title,
+        content: content,
+        createdAt: DateTime.now(),
+      );
+      _announcements.insert(0, newAnn);
+      notifyListeners();
+    }
+  }
+
+  void _subscribeToAnnouncements() {
+    _announcementsChannel?.unsubscribe();
+    final college = _user?.college;
+    if (college == null) return;
+
+    _announcementsChannel = _supabase
+        .channel('public:announcements')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'announcements',
+          callback: (payload) {
+            print('Announcements real-time update: $payload');
+            fetchAnnouncements();
+          },
+        );
+    _announcementsChannel?.subscribe();
+  }
+
+  List<AnnouncementModel> _getFallbackAnnouncements() {
+    return [
+      AnnouncementModel(
+        id: 'fallback_1',
+        college: _user?.college ?? 'RVCE',
+        title: '📢 Mess timing changed',
+        content: 'Mess timing changed to 7:30 AM – 9:30 AM from Monday',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      AnnouncementModel(
+        id: 'fallback_2',
+        college: _user?.college ?? 'RVCE',
+        title: '🛠️ Scheduled maintenance',
+        content: 'Scheduled maintenance on Block C lifts this Saturday',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      AnnouncementModel(
+        id: 'fallback_3',
+        college: _user?.college ?? 'RVCE',
+        title: '🎉 Night Canteen menu updated',
+        content: 'Night Canteen menu updated! Try new Momos & Rolls',
+        createdAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+    ];
+  }
+
+  void _subscribeToFoodStock() {
+    _foodStockChannel?.unsubscribe();
+    _foodStockChannel = _supabase
+        .channel('public:food_stock')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'food_stock',
+          callback: (payload) {
+            print('Food stock real-time change: $payload');
+            fetchFoodItems();
+          },
+        );
+    _foodStockChannel?.subscribe();
+  }
+
+  void _subscribeToRequests() {
+    _requestsChannel?.unsubscribe();
+    _requestsChannel = _supabase
+        .channel('public:requests')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'service_requests',
+          callback: (payload) {
+            print('Service requests real-time change: $payload');
+            _fetchRequests();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'maintenance_requests',
+          callback: (payload) {
+            print('Maintenance requests real-time change: $payload');
+            _fetchRequests();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'lost_requests',
+          callback: (payload) {
+            print('Lost requests real-time change: $payload');
+            _fetchRequests();
+          },
+        );
+    _requestsChannel?.subscribe();
   }
 }

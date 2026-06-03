@@ -250,19 +250,26 @@ class _RequestCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Type icon
                 Container(
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
                     color: request.type == RequestType.cleaning
                         ? AppTheme.primaryLight
-                        : AppTheme.successLight,
+                        : request.category == 'Lost Card'
+                            ? (request.title.contains('Mess Card')
+                                ? const Color(0xFFEEF2FF)
+                                : const Color(0xFFECFDF5))
+                            : AppTheme.successLight,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
                     child: Text(
-                      request.type == RequestType.cleaning ? '🧹' : '🔧',
+                      request.type == RequestType.cleaning
+                          ? '🧹'
+                          : request.category == 'Lost Card'
+                              ? (request.title.contains('Mess Card') ? '💳' : '🪪')
+                              : '🔧',
                       style: const TextStyle(fontSize: 22),
                     ),
                   ),
@@ -364,41 +371,20 @@ class _RequestCard extends StatelessWidget {
             ),
           ),
 
-          // ── Progress bar for in-progress ──────────
-          if (request.status == RequestStatus.inProgress)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Staff on their way...',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.primaryOrange,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: 0.6,
-                      backgroundColor: AppTheme.primaryOrange.withOpacity(0.12),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppTheme.primaryOrange),
-                      minHeight: 5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
   }
 
   Widget _buildStatusChip(RequestStatus status) {
+    if (request.category == 'Lost Card' && status == RequestStatus.inProgress) {
+      return const StatusChip(
+        label: 'Approved',
+        bgColor: Color(0x2622C55E),
+        textColor: Color(0xFF22C55E),
+        icon: Icons.check_circle_rounded,
+      );
+    }
     switch (status) {
       case RequestStatus.pending:
         return StatusChip.pending();

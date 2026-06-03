@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../providers/app_provider.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/glass.dart';
@@ -244,20 +245,23 @@ class _OtpScreenState extends State<OtpScreen> {
     final success = await provider.verifyOtp(_otp);
     if (success && mounted) {
       final user = provider.user;
-      final cleanPhone = widget.phone.replaceAll(RegExp(r'\D'), '');
-      final isMock = cleanPhone.endsWith('9876543210') ||
-                     cleanPhone.endsWith('9876543211') ||
-                     cleanPhone.endsWith('9876543212') ||
-                     cleanPhone.endsWith('9876543213') ||
-                     cleanPhone.endsWith('9876543214');
+      final cleanPhone = widget.phone.replaceAll(RegExp(r'\D'), '').replaceFirst('91', '');
+      final isMock = demoUsers.any((u) => u.phone == cleanPhone);
 
-      if (user != null && user.role == widget.role) {
-        if (isMock) {
-          // Profile exists for mock number, let them choose: login directly or test signup
-          _showMockChoiceDialog(context, user);
+      if (user != null) {
+        if (user.role == widget.role) {
+          if (isMock) {
+            // Profile exists for mock number, let them choose: login directly or test signup
+            _showMockChoiceDialog(context, user);
+          } else {
+            // Real user, always log in directly
+            _goToDashboard(user);
+          }
         } else {
-          // Real user, always log in directly
-          _goToDashboard(user);
+          setState(() {
+            _error = 'This number is registered under a different role. Please select the correct role.';
+          });
+          provider.logout();
         }
       } else {
         // User has no profile, direct to registration

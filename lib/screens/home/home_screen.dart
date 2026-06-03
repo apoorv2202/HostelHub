@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../utils/app_theme.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../models/models.dart';
 import '../services/room_services_screen.dart';
 import '../services/night_canteen_screen.dart';
 import '../services/maintenance_screen.dart';
@@ -19,6 +20,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().user;
     final cartCount = context.watch<CartProvider>().itemCount;
+    final requests = context.watch<AppProvider>().requests;
+    final lostMessCardReqs = requests
+        .where((r) => r.category == 'Lost Card' && r.title.contains('Mess Card'))
+        .toList();
 
     return Scaffold(
       backgroundColor: AppTheme.bg,
@@ -49,6 +54,11 @@ class HomeScreen extends StatelessWidget {
                 // ── Welcome card ───────────────────────────
                 _buildWelcomeCard(user?.name ?? 'Student'),
 
+                if (lostMessCardReqs.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _buildMessCardStatusCard(context, lostMessCardReqs.first),
+                ],
+
                 const SizedBox(height: 28),
 
                 // ── Quick Stats ────────────────────────────
@@ -69,7 +79,7 @@ class HomeScreen extends StatelessWidget {
                 // ── Announcements ──────────────────────────
                 const _SectionTitle(title: 'Announcements 📢'),
                 const SizedBox(height: 16),
-                _buildAnnouncements(),
+                _buildAnnouncements(context),
 
                 const SizedBox(height: 80),
               ]),
@@ -244,7 +254,8 @@ class HomeScreen extends StatelessWidget {
   Widget _buildQuickStats(BuildContext context) {
     final requests = context.watch<AppProvider>().requests;
     final pending = requests.where((r) =>
-        r.status.name == 'pending' || r.status.name == 'inProgress').length;
+        r.status == RequestStatus.pending ||
+        (r.status == RequestStatus.inProgress && r.category != 'Lost Card')).length;
 
     return Row(
       children: [
@@ -325,20 +336,25 @@ class HomeScreen extends StatelessWidget {
   }
 
   // ── Announcements ─────────────────────────
-  Widget _buildAnnouncements() {
-    final items = [
-      ('📢', 'Mess timing changed to 7:30 AM – 9:30 AM from Monday',
-          '2 hours ago'),
-      ('🛠️', 'Scheduled maintenance on Block C lifts this Saturday',
-          'Yesterday'),
-      ('🎉', 'Night Canteen menu updated! Try new Momos & Rolls',
-          '2 days ago'),
-    ];
+  Widget _buildAnnouncements(BuildContext context) {
+    final announcements = context.watch<AppProvider>().announcements;
+
+    if (announcements.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Text(
+            'No announcements yet. 📭',
+            style: TextStyle(color: AppTheme.textGrey, fontSize: 13),
+          ),
+        ),
+      );
+    }
 
     return Column(
-      children: items
+      children: announcements
           .map(
-            (item) => Container(
+            (ann) => Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -349,26 +365,35 @@ class HomeScreen extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.$1, style: const TextStyle(fontSize: 24)),
+                  const Text('📢', style: TextStyle(fontSize: 24)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item.$2,
+                          ann.title,
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                             color: AppTheme.textDark,
-                            height: 1.3,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          item.$3,
+                          ann.content,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textMedium,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _formatTimeAgo(ann.createdAt),
+                          style: const TextStyle(
+                            fontSize: 10,
                             color: AppTheme.textLight,
                           ),
                         ),
@@ -383,12 +408,108 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  String _formatTimeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     if (hour < 21) return 'Good Evening';
     return 'Good Night';
+  }
+
+  Widget _buildMessCardStatusCard(BuildContext context, RequestModel request) {
+    Color color;
+    Color bgColor;
+    IconData icon;
+    String statusTitle;
+    String statusSubtitle;
+
+    if (request.status == RequestStatus.pending) {
+      color = AppTheme.warning;
+      bgColor = AppTheme.warningLight;
+      icon = Icons.hourglass_empty_rounded;
+      statusTitle = 'Mess Card Replacement Pending';
+      statusSubtitle = 'Warden is verifying your payment and request.';
+    } else if (request.status == RequestStatus.inProgress) {
+      color = AppTheme.success;
+      bgColor = AppTheme.successLight;
+      icon = Icons.check_circle_outline_rounded;
+      statusTitle = 'New Mess Card Approved! 🎉';
+      statusSubtitle = 'Your new card is ready. Collect it from the Warden\'s office.';
+    } else if (request.status == RequestStatus.completed) {
+      color = AppTheme.success;
+      bgColor = AppTheme.successLight;
+      icon = Icons.done_all_rounded;
+      statusTitle = 'New Mess Card Issued';
+      statusSubtitle = 'You have collected your replacement card.';
+    } else {
+      color = AppTheme.error;
+      bgColor = AppTheme.errorLight;
+      icon = Icons.error_outline_rounded;
+      statusTitle = 'Mess Card Request Rejected';
+      statusSubtitle = 'Please contact the Warden\'s office for details.';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  statusTitle,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  statusSubtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: color.withOpacity(0.8),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

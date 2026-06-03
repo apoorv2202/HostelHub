@@ -7,6 +7,7 @@ import '../../providers/app_provider.dart';
 import '../../widgets/glass.dart';
 import '../../widgets/common_widgets.dart';
 import '../../models/user.dart';
+import '../../utils/constants.dart';
 import 'otp_screen.dart';
 
 class PhoneLoginScreen extends StatefulWidget {
@@ -202,6 +203,22 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                           if (val.length != 10) {
                             return 'Enter a valid 10-digit number';
                           }
+                          final cleanPhone = val.replaceAll(RegExp(r'\D'), '');
+                          final matchingUsers = demoUsers.where((u) => u.phone == cleanPhone).toList();
+                          if (matchingUsers.isEmpty) {
+                            return 'Phone number not registered in the system.';
+                          }
+                          final hasMatchingRole = matchingUsers.any((u) {
+                            if (widget.role == UserRole.student && u.role == 'student') return true;
+                            if (widget.role == UserRole.warden && u.role == 'warden') return true;
+                            if (widget.role == UserRole.cleaning && u.role == 'cleaner') return true;
+                            if (widget.role == UserRole.canteen && u.role == 'canteen') return true;
+                            if (widget.role == UserRole.maintenance && u.role == 'maintenance') return true;
+                            return false;
+                          });
+                          if (!hasMatchingRole) {
+                            return 'This number is registered under a different role.';
+                          }
                           return null;
                         },
                       ),
@@ -304,17 +321,44 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
   }
 
   String _getDemoNoteForRole(UserRole role) {
+    String numberList = '';
     switch (role) {
       case UserRole.student:
-        return 'Demo Student Login:\nUse Number: 9876543210\nUse OTP: 123456';
+        numberList = '• RVCE: 9876500004 or 9876500005\n'
+            '• BMS: 9876510004 or 9876510005\n'
+            '• PES: 9876520004 or 9876520005\n'
+            '• Ramaiah: 9876530004 or 9876530005\n'
+            '• Test Number: 9876543210';
+        break;
       case UserRole.warden:
-        return 'Demo Warden Login:\nUse Number: 9876543211\nUse OTP: 123456';
+        numberList = '• RVCE: 9876500001\n'
+            '• BMS: 9876510001\n'
+            '• PES: 9876520001\n'
+            '• Ramaiah: 9876530001\n'
+            '• Test Number: 9876543211';
+        break;
       case UserRole.canteen:
-        return 'Demo Canteen Login:\nUse Number: 9876543212\nUse OTP: 123456';
+        numberList = '• RVCE: 9876500007\n'
+            '• BMS: 9876510007\n'
+            '• PES: 9876520007\n'
+            '• Ramaiah: 9876530007\n'
+            '• Test Number: 9876543212';
+        break;
       case UserRole.cleaning:
-        return 'Demo Cleaner Login:\nUse Number: 9876543213\nUse OTP: 123456';
+        numberList = '• RVCE: 9876500002\n'
+            '• BMS: 9876510002\n'
+            '• PES: 9876520002\n'
+            '• Ramaiah: 9876530002\n'
+            '• Test Number: 9876543213';
+        break;
       case UserRole.maintenance:
-        return 'Demo Maintenance Login:\nUse Number: 9876543214\nUse OTP: 123456';
+        numberList = '• RVCE: 9876500003\n'
+            '• BMS: 9876510003\n'
+            '• PES: 9876520003\n'
+            '• Ramaiah: 9876530003\n'
+            '• Test Number: 9876543214';
+        break;
     }
+    return 'Standard Campus Demo Logins (OTP: 123456):\n$numberList';
   }
 }

@@ -207,7 +207,7 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen>
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Emoji thumbnail
+                // Emoji or Image thumbnail
                 Container(
                   width: 56,
                   height: 56,
@@ -215,11 +215,42 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen>
                     color: AppTheme.backgroundBlack,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Text(
-                      item.emoji,
-                      style: const TextStyle(fontSize: 28),
-                    ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                        ? Image.network(
+                            item.imageUrl!,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppTheme.primaryOrange,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Text(
+                                  item.emoji,
+                                  style: const TextStyle(fontSize: 28),
+                                ),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Text(
+                              item.emoji,
+                              style: const TextStyle(fontSize: 28),
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 14),

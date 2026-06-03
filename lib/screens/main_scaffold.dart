@@ -9,6 +9,11 @@ import 'home/home_screen.dart';
 import 'requests/my_requests_screen.dart';
 import 'orders/my_orders_screen.dart';
 import 'profile/profile_screen.dart';
+import '../models/user.dart';
+import 'admin_dashboard.dart';
+import 'cleaning_dashboard.dart';
+import 'maintenance_dashboard.dart';
+import '../providers/app_provider.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -29,6 +34,23 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AppProvider>().user;
+    
+    if (user == null) {
+      return const Scaffold(
+        backgroundColor: AppTheme.backgroundBlack,
+        body: Center(child: CircularProgressIndicator(color: AppTheme.primaryOrange)),
+      );
+    }
+    
+    if (user.role == UserRole.warden) {
+      return AdminDashboardScreen(user: user);
+    } else if (user.role == UserRole.cleaning) {
+      return CleaningDashboardScreen(user: user);
+    } else if (user.role == UserRole.maintenance) {
+      return MaintenanceDashboardScreen(user: user);
+    }
+    
     final cartCount = context.watch<CartProvider>().itemCount;
 
     return Scaffold(

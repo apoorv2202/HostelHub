@@ -10,6 +10,7 @@ class FoodItem {
   final String category;
   final String emoji;
   final String description;
+  final String? imageUrl;
 
   FoodItem({
     required this.id,
@@ -20,13 +21,15 @@ class FoodItem {
     required this.category,
     required this.emoji,
     required this.description,
+    this.imageUrl,
   });
 }
 
 // ─────────────────────────────────────────────
 //  request_model.dart
 // ─────────────────────────────────────────────
-enum RequestType { cleaning, maintenance }
+enum RequestType { cleaning, maintenance, lostItem }
+
 
 enum RequestStatus { pending, inProgress, completed, rejected }
 
@@ -115,4 +118,32 @@ class HostelModel {
   final String? collegeId;
 
   HostelModel({required this.id, required this.name, this.collegeId});
+}
+
+class AnnouncementModel {
+  final String id;
+  final String college;
+  final String title;
+  final String content;
+  final DateTime createdAt;
+
+  AnnouncementModel({
+    required this.id,
+    required this.college,
+    required this.title,
+    required this.content,
+    required this.createdAt,
+  });
+
+  factory AnnouncementModel.fromJson(Map<String, dynamic> json) {
+    return AnnouncementModel(
+      id: json['id'].toString(),
+      college: json['college'] ?? '',
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
+          : DateTime.now(),
+    );
+  }
 }

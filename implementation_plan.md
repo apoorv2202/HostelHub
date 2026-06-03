@@ -1,87 +1,65 @@
-# Implementation Plan - Fix Cleaner Dashboard Requests and Student Order List Refresh
+# Implementation Plan - Fix Lost Card Status and Squidex Food Photos
 
-This plan details the technical steps to address two critical bugs in the Hostel Hub codebase:
-1. **Cleaning requests are not appearing on the cleaner dashboard**.
-2. **The student dashboard's order list does not refresh when an order is updated (e.g., marked as delivered) in the canteen staff dashboard**.
-
----
-
-## User Review Required
-
-> [!IMPORTANT]
-> To fix the **cleaner dashboard requests visibility**, a Supabase Row-Level Security (RLS) policy update is required. Currently, staff roles (`'cleaner'`, `'canteen'`, `'maintenance'`) do not have SELECT permission on the `profiles` table for other users.
->
-> When the cleaner dashboard fetches cleaning requests joined with student profiles, Supabase returns `null` for the `profiles` object, which fails the `profile != null` check in `cleaning_dashboard.dart`, filtering out all requests.
->
-> **Action Required**: You will need to run a quick SQL command in the Supabase SQL Editor. The exact SQL script is provided below in the proposed changes.
-
----
-
-## Open Questions
-
-*No open questions. The technical causes and solutions have been fully mapped out.*
+This plan outlines the changes required to address the two issues raised by the user:
+1. **Lost Card Request Status**: Correctly mapping and displaying the "Approved" status of a student's lost card request when a Warden approves it.
+2. **Squidex Food Item Photos**: Correctly fetching and displaying food item images uploaded in Squidex inside the Night Canteen dashboards (both for students and canteen staff).
 
 ---
 
 ## Proposed Changes
 
-### 1. Supabase Database Schema & RLS Policies
+### Component 1: Models and Service Layer (Squidex Image URL Integration)
 
-#### [MODIFY] [supabase_schema.sql](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/supabase_schema.sql)
-- Update the `profiles` SELECT policy to allow all staff roles (`'warden'`, `'admin'`, `'cleaner'`, `'canteen'`, `'maintenance'`) to view student profile fields. This allows the cleaner dashboard and canteen/maintenance portals to read student names, hostel names, room numbers, and colleges to fulfill requests and deliveries.
+We will update the model `FoodItem` to include `imageUrl` and parse it dynamically from the Squidex API.
 
-```sql
--- Wardens, Admins, Cleaners, Canteen, and Maintenance can view profiles
-CREATE POLICY "Staff, Wardens, and Admins view all profiles" ON public.profiles 
-  FOR SELECT USING (public.get_user_role(auth.uid()) IN ('warden', 'admin', 'cleaner', 'canteen', 'maintenance'));
-```
+#### [MODIFY] [models.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/models/models.dart)
+- Add `final String? imageUrl` to the `FoodItem` class.
+- Update the constructor to accept `this.imageUrl`.
 
-- **SQL Migration Script** (To be run by the user or applied directly in Supabase):
-  ```sql
-  DROP POLICY IF EXISTS "Wardens and Admins view all profiles" ON public.profiles;
-  
-  CREATE POLICY "Staff, Wardens, and Admins view all profiles" ON public.profiles 
-    FOR SELECT USING (public.get_user_role(auth.uid()) IN ('warden', 'admin', 'cleaner', 'canteen', 'maintenance'));
-  ```
+#### [MODIFY] [squidex_service.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/services/squidex_service.dart)
+- Parse image assets from Squidex response. Check common image field names (`image`, `photo`, `picture`, `imageUrl`, `image_url`) under `fieldData` and construct the public asset URL (`https://cloud.squidex.io/api/assets/{appName}/{assetId}`).
+- Support fallback to direct URLs if the field contains a full HTTP link.
 
 ---
 
-### 2. Flutter State Management
+### Component 2: Application Provider (Real-time and Status Mappings)
 
 #### [MODIFY] [app_provider.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/providers/app_provider.dart)
-- Set up Supabase Realtime subscriptions using `_supabase.channel().onPostgresChanges()` for changes on tables:
-  - `orders`
-  - `service_requests`
-  - `maintenance_requests`
-- Automatically call `_fetchOrders()` or `_fetchRequests()` and trigger `notifyListeners()` when database updates occur.
-- Add `_setupRealtimeSubscriptions()` helper method and trigger it upon successful login/auth state initialization.
-- Add `_cancelRealtimeSubscriptions()` helper method and invoke it inside the `logout()` method to clean up channels and avoid memory leaks.
-- Implement the manual trigger methods `refreshOrders()` and `refreshRequests()`.
+- Modify `_fetchRequests()` mapping for `lost_requests`:
+  - Properly map `status == 'rejected'` to `RequestStatus.rejected` (currently it defaults to `RequestStatus.pending`).
+  - Maintain `status == 'approved'` mapping to `RequestStatus.inProgress`.
+- Update all instances of `FoodItem` creation (`_getFallbackFoodItems` and stock toggle overrides) to include `imageUrl: old.imageUrl` or `imageUrl: null`.
+- Add a new subscription channel `_requestsChannel` in `_subscribeToRequests()` to listen to real-time insert/update/delete events on `service_requests`, `maintenance_requests`, and `lost_requests`. Trigger a fetch on changes to reflect warden/staff updates instantly on the student dashboard.
+- Unsubscribe from `_requestsChannel` in the `logout()` method.
 
 ---
 
-### 3. Student UI Enhancements
+### Component 3: User Interface (Dashboard Rendering)
 
-#### [MODIFY] [my_orders_screen.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/screens/orders/my_orders_screen.dart)
-- Wrap both the **Active Orders** and **Past Orders** list views in a `RefreshIndicator` widget.
-- Configure the `onRefresh` callback to invoke `AppProvider.refreshOrders()`, letting students manually pull to refresh their orders list in case of network fluctuations.
+We will modify the UI to correctly represent status changes and render images.
+
+#### [MODIFY] [my_requests_screen.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/screens/requests/my_requests_screen.dart)
+- Update `_buildStatusChip` inside `_RequestCard`:
+  - If `request.category == 'Lost Card'` and `request.status == RequestStatus.inProgress`, display a green chip with the label "Approved" using `StatusChip(label: 'Approved', bgColor: Color(0x2622C55E), textColor: Color(0xFF22C55E), icon: Icons.check_circle_rounded)`.
+- Hide the "Staff on their way..." progress bar indicator if `request.category == 'Lost Card'` (i.e. check `request.status == RequestStatus.inProgress && request.category != 'Lost Card'`).
+
+#### [MODIFY] [night_canteen_screen.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/screens/services/night_canteen_screen.dart)
+- In `_FoodItemCard`, check if `item.imageUrl` is provided. If so, display it using `Image.network` with a loading spinner and an error fallback that displays the text emoji. Otherwise, show the default emoji.
+
+#### [MODIFY] [canteen_dashboard.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/screens/canteen_dashboard.dart)
+- In the canteen dashboard menu tab, similarly replace the static emoji rendering with a container rendering the `Image.network` (with fallback to emoji if null or failed).
+
+#### [MODIFY] [constants.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/utils/constants.dart)
+- Update the mock items list (`mockFoodItems`) to include the new `imageUrl` field.
 
 ---
 
 ## Verification Plan
 
-### Automated & Compilation Verification
-- Run `flutter analyze` or ensure zero compiler errors in the updated files.
+### Automated / Build Verification
+- Build and run the project using standard Flutter build tools to ensure no compilation/syntax issues.
 
 ### Manual Verification
-1. **Apply the SQL Fix**:
-   Execute the migration snippet in your Supabase SQL Editor.
-2. **Verify Cleaner Dashboard Requests**:
-   - Log in as a student, submit a new room cleaning request.
-   - Log in as a cleaner from the same college campus.
-   - Verify that the cleaning request appears instantly with student details (name, room, hostel).
-3. **Verify Student Dashboard Refresh**:
-   - Log in as a student on one device and place an order.
-   - Log in as canteen staff on another.
-   - Mark the order as delivered.
-   - Verify that the student's order status updates instantly without restarting the app or manual reload.
+- Log in as student to check that the Night Canteen loads images for items with uploaded Squidex assets and falls back to emojis gracefully.
+- Log in as Warden, approve a Lost Card request for a student.
+- Check the student's My Requests tab: the request status should update in real-time to "Approved" with a green chip, and no "Staff on their way" progress bar should be visible.

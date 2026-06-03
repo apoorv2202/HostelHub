@@ -75,7 +75,10 @@ class _LostItemsScreenState extends State<LostItemsScreen> {
       final userId = supabase.auth.currentUser?.id;
       
       if (userId != null) {
-        final itemType = _selectedItem == 'Mess Card' ? 'mess_card' : 'id_card';
+        final itemType = _selectedItem == 'Mess Card'
+            ? 'mess_card'
+            : (_selectedItem == 'ID Card' ? 'id_card' : 'room_keys');
+
         
         await supabase.from('lost_requests').insert({
           'user_id': userId,

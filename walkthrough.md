@@ -1,63 +1,45 @@
-# Technical Walkthrough — Multi-Role Hostel Hub
+# Supabase & Squidex Integration Walkthrough
 
-We have successfully implemented the multi-role system matching the final Supabase DDL schema. The application now supports **Warden**, **Student**, **Cleaner**, **Canteen**, and **Maintenance** roles with dynamic database and CMS bindings.
-
----
-
-## 1. Flow & Screen Architecture
-
-### Entry & Role Selection
-- **`RoleSelectionScreen`**: When entering the app, the user is greeted with a sleek "Who are you?" selector.
-  - Selecting **Student** routes to `PhoneLoginScreen` (phone number + OTP).
-  - Selecting any other staff role routes to `StaffIdLoginScreen` (ID Card login).
-- **`StaffIdLoginScreen`**: A premium dark-themed card screen where staff verify themselves using their **ID Card / Staff ID**.
-
-### Swapped Verification Flow
-- **Student & Staff Pending Screen**: When students and non-warden staff register, their status is set to `pending`. They are redirected to `PendingVerificationScreen` and cannot log in until approved.
-- **Warden Auto-Verification**: Wardens get registered as `verified` directly and bypass the pending screen to log in immediately.
-
-### Dashboards & Scoping
-1. **Warden Dashboard (`admin_dashboard.dart`)**:
-   - Fetches and displays all registered students on their campus.
-   - Lists lost mess card and ID card requests.
-   - Allows Warden to verify/approve pending registrations.
-   - **Interactive Document Viewer (New)**: Wardens can inspect simulated ID Cards and Mess Cards inside high-fidelity visual overlays.
-2. **Cleaner Dashboard (`cleaning_dashboard.dart`)**:
-   - Cleaners see and accept room-cleaning requests from students at their college.
-   - Can update request status to accepted/completed.
-3. **Canteen Dashboard (`canteen_dashboard.dart`)**:
-   - Canteen staff see orders placed specifically at their campus canteen (e.g. RVCE canteen staff only see RVCE orders).
-   - Allows advancing orders from accepted -> preparing -> ready -> completed.
-   - **Menu Management Tab (New)**: Toggles item availability ("In Stock" / "Out of Stock") dynamically, propagating to student night canteen instantly.
-4. **Maintenance Dashboard (`maintenance_dashboard.dart`)**:
-   - Technicians see electricians and furniture repair requests uploaded by students.
-   - Displays student name, room, hostel, and description of broken fans or electrical appliances.
-   - **Premium Verified Photo Gradients (New)**: Replaced broken placeholder images with gorgeous styled category tags and dynamic icons.
+We have successfully integrated all fixes, including dynamic data loading, into the new project workspace at `C:\Users\APOORV\OneDrive\Desktop\HostelHub\hostel_hub_updated`.
 
 ---
 
-## 2. Dynamic Supabase & Squidex Scoping
+## 1. Dynamic Colleges & Hostels from Squidex
 
-- **College Scoping**: Enforced both via RLS policies in the Supabase schema and checked programmatically in the Dart state layer:
-  - Canteens filter orders by `college = user.college`.
-  - Wardens, Cleaners, and Maintenance only retrieve requests and profiles belonging to their college.
-- **Rogue Student Prevention**: Enforced via Supabase RLS policies and implemented in `AppProvider` to ensure students can only view or insert their own requests.
-- **Lost Requests Integration**: Student `lost_items_screen.dart` inserts directly to Supabase `lost_requests` which propagates instantly to the Warden Dashboard in real-time.
-- **Instant Logout (New)**: Clears all local state instantly and runs Supabase sign-out asynchronously in a background worker, removing the lag completely.
+In [registration_screen.dart](file:///C:/Users/APOORV/OneDrive/Desktop/HostelHub/hostel_hub_updated/lib/screens/auth/registration_screen.dart):
+- **Dynamic Loading**: Replaced the static, hardcoded list of colleges (`collegeHostels`) with dynamic fetching via `SquidexService.getColleges()` and `SquidexService.getHostels()`.
+- **Dynamic Filtering**: The **Hostel** dropdown remains disabled until the student selects their **College**. Once selected, the screen filters the list of hostels and shows only the hostels associated with that chosen college.
+- **Loading Overlay Integration**: Displays a clean loading progress spinner while querying data from Squidex on startup.
 
 ---
 
-## 3. Real-Time Scoping & Dashboard Refresh Fixes (Latest turn)
+## 2. Robust Name and College Match Validator
 
-### 🔓 Cleaner Dashboard Request Visibility Fix (RLS Update)
-* **Problem**: The cleaner dashboard fetches `service_requests` joined with the `profiles` table to render student details. Since the database's original `SELECT` policy on the `profiles` table was restricted to wardens and admins, cleaners received `null` profiles. This failed the frontend's safety check (`profile != null`), completely hiding all room cleaning requests from the cleaner's dashboard.
-* **Fix**: Updated `profiles` table SELECT policy in `supabase_schema.sql` to explicitly allow all staff roles (warden, admin, cleaner, canteen, and maintenance):
-  ```sql
-  CREATE POLICY "Staff, Wardens, and Admins view all profiles" ON public.profiles 
-    FOR SELECT USING (public.get_user_role(auth.uid()) IN ('warden', 'admin', 'cleaner', 'canteen', 'maintenance'));
-  ```
+We implemented a custom matcher helper (`_isCollegeMatch`) to prevent validation failures when registering.
+- **The Issue**: Demo users have short name abbreviation codes (e.g. `RVCE`), but Squidex stores official full-length college names (e.g. `RV College of Engineering`). A standard substring `contains()` comparison fails in both directions.
+- **The Solution**: The `_isCollegeMatch` helper dynamically resolves abbreviations and common synonyms (e.g. matches `RVCE` with `RV College of Engineering`, `BMS` with `BMS College of Engineering`, etc.) to ensure validation works seamlessly.
 
-### 🔄 Student Dashboard Refresh Buttons
-* **Problem**: Stale order lists and request trackers inside the student dashboard.
-* **Fix**: Added high-fidelity **Refresh Icon Buttons** to the student's `MyOrdersScreen` and `MyRequestsScreen` AppBars.
-  - Exposed `refreshOrders()` and `refreshRequests()` methods in `AppProvider` to pull the latest state from Supabase, matching the manual refresh flow of other staff dashboards (maintenance, canteen, cleaner).
+---
+
+## 3. Lost Card Replacements & Real-Time Synced Status
+
+- **Real-Time Postgres Subscriptions**: 
+  - Added a multi-table `RealtimeChannel` subscription (`_requestsChannel`) inside `lib/providers/app_provider.dart` that dynamically listens to `INSERT`, `UPDATE`, and `DELETE` events on the `service_requests`, `maintenance_requests`, and `lost_requests` tables.
+  - On database updates, the provider automatically updates the state, reflecting Warden approvals instantly on the student's dashboard.
+- **Status Mappings & Banners**:
+  - In `AppProvider._fetchRequests()`, updated mapping logic for `lost_requests` to support all statuses (`pending`, `approved` / `inProgress`, `completed`, and `rejected`).
+  - Added custom icons (`💳` or `🪪`) and colors for lost card categories in `my_requests_screen.dart` and custom status banners (e.g. 'Approved! Collect card from Warden\'s office') in `home_screen.dart`.
+
+---
+
+## How to Verify & Run the Application
+
+1. Open your terminal or IDE in the workspace path:
+   ```bash
+   cd C:\Users\APOORV\OneDrive\Desktop\HostelHub\hostel_hub_updated
+   ```
+2. Launch the Flutter project:
+   ```bash
+   flutter run
+   ```
+3. Register or log in to test the live Squidex college/hostel selections and the Warden-to-Student approval flow.
